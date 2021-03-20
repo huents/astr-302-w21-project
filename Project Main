@@ -44,3 +44,7 @@ def star_assist_main(worked_table, displayed_objects, circle_angle, radec_coord)
     #constrains the objects from the table based on the circle angle slider.
     
     print(final_table[0:displayed_objects]['objid','ra','dec','u','g','r','i'])
+
+#Format to call function: star_assist(latitude(degrees), longitude(degrees), time/date(year-month-day time))
+#Example on the next line
+star_assist(50, 50, "2020-11-18 22:00")
