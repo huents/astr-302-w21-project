@@ -1,0 +1,46 @@
+from astroquery.sdss import SDSS
+from astropy import coordinates as coords
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.table import Table
+import matplotlib.pyplot as plt
+from astropy.coordinates import EarthLocation
+import numpy as np
+from astropy.time import Time
+import pytz
+from astropy.coordinates import AltAz
+from astroplan.plots import plot_airmass
+from astroplan import Observer, FixedTarget, time_grid_from_range
+from ipywidgets import interact, fixed
+
+def star_assist(latitude, longitude, time):
+    #latitude, longitude are in degrees, time is in UTC and of the example format "2020-11-18 22:00"
+    observer_location = EarthLocation(lat=latitude * u.deg, lon=longitude * u.deg)
+    observing_time = Time(time)
+    #UTC
+    coord = SkyCoord(alt = 90*u.deg, az = 0*u.deg, frame='altaz', location=observer_location,obstime=observing_time)
+    radec_coord = coord.transform_to('icrs')
+    #This gets me the RA DEC coordinates directly above the observer, dependent on his location and the time.
+
+    complete_table = SDSS.query_region(radec_coord, radius=90*u.deg, spectro=True, photoobj_fields=['objid','ra','dec','u','g','r','i'])
+
+    working_table = complete_table[complete_table['u'] > -9998]
+    working_table = working_table[working_table['g'] > -9998]
+    working_table = working_table[working_table['r'] > -9998]
+    working_table = working_table[working_table['i'] > -9998]
+    #getting rid of bad data
+
+    working_table.add_column(working_table['u']+working_table['g']+working_table['r']+working_table['i'], name='Rough Ordinal Apparent Magnitude')
+    working_table.sort('Rough Ordinal Apparent Magnitude')
+    #sorting by the sum of all visible filters to get a very rough idea of which objects have a greater 
+    #apparent brightness, and then sorting by it.
+    
+    interact(star_assist_main, worked_table = fixed(working_table), displayed_objects = (1,20,1), circle_angle = (0,90,1), radec_coord = fixed(radec_coord))
+    #sets up the interactive elements
+    
+def star_assist_main(worked_table, displayed_objects, circle_angle, radec_coord):
+    
+    final_table = worked_table[radec_coord.separation(SkyCoord(worked_table['ra']*u.deg, worked_table['dec']*u.deg, frame='icrs')) < circle_angle*u.deg]
+    #constrains the objects from the table based on the circle angle slider.
+    
+    print(final_table[0:displayed_objects]['objid','ra','dec','u','g','r','i'])
